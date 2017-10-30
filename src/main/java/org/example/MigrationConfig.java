@@ -13,10 +13,11 @@ import com.marklogic.spring.batch.columnmap.ColumnMapSerializer;
 import com.marklogic.spring.batch.columnmap.DefaultStaxColumnMapSerializer;
 import com.marklogic.spring.batch.columnmap.JacksonColumnMapSerializer;
 import com.marklogic.spring.batch.config.support.OptionParserConfigurer;
-import com.marklogic.spring.batch.item.reader.AllTablesItemReader;
 import com.marklogic.spring.batch.item.writer.MarkLogicItemWriter;
 import com.marklogic.xcc.ContentSource;
 import com.marklogic.xcc.ContentSourceFactory;
+import custom.AllTablesItemReader;
+import custom.JdbcCursorItemReader;
 import joptsimple.OptionParser;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -25,7 +26,6 @@ import org.springframework.batch.core.configuration.annotation.JobBuilderFactory
 import org.springframework.batch.core.configuration.annotation.JobScope;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.item.ItemReader;
-import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
@@ -94,6 +94,7 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 	                 @Value("#{jobParameters['hosts']}") String hosts,
 	                 @Value("#{jobParameters['thread_count'] ?: 4}") Integer threadCount,
 	                 @Value("#{jobParameters['sql']}") String sql,
+					 @Value("#{jobParameters['pk']}") String pk,
 	                 @Value("#{jobParameters['root_local_name']}") String rootLocalName,
 	                 @Value("#{jobParameters['document_type']}") String documentType) {
 
@@ -110,6 +111,7 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 			logger.info("Migrate all tables: " + allTables);
 		} else {
 			logger.info("SQL: " + sql);
+			logger.info("Primary Key: " + pk);
 			logger.info("Root local name: " + rootLocalName);
 		}
 		logger.info("Collections: " + collections);
@@ -124,11 +126,11 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 			// Uses Spring Batch's JdbcCursorItemReader and Spring JDBC's ColumnMapRowMapper to map each row
 			// to a Map<String, Object>. Normally, if you want more control, standard practice is to bind column values to
 			// a POJO and perform any validation/transformation/etc you need to on that object.
-			JdbcCursorItemReader<Map<String, Object>> r = new JdbcCursorItemReader<Map<String, Object>>();
+			JdbcCursorItemReader r = new JdbcCursorItemReader();
 			r.setRowMapper(new ColumnMapRowMapper());
 			r.setDataSource(buildDataSource());
 			r.setSql(sql);
-			r.setRowMapper(new ColumnMapRowMapper());
+			r.setPrimaryKey(pk);
 			reader = r;
 		}
 
@@ -139,6 +141,7 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 		} else {
 			serializer = new DefaultStaxColumnMapSerializer();
 		}
+
 		ColumnMapProcessor processor = new ColumnMapProcessor(serializer);
 		if (rootLocalName != null) {
 			processor.setRootLocalName(rootLocalName);

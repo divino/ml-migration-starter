@@ -24,6 +24,7 @@ import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
 import java.sql.*;
+import java.util.Map;
 
 /**
  * <p>
@@ -48,7 +49,7 @@ import java.sql.*;
  * @author Robert Kasanicky
  * @author Thomas Risberg
  */
-public class JdbcCursorItemReader<T> extends AbstractCursorItemReader<T> {
+public class JdbcCursorItemReader extends AbstractCursorItemReader {
 
     PreparedStatement preparedStatement;
 
@@ -58,7 +59,7 @@ public class JdbcCursorItemReader<T> extends AbstractCursorItemReader<T> {
 
     String primaryKey;
 
-    RowMapper<T> rowMapper;
+    RowMapper<Map<String, Object>> rowMapper;
 
     private ResultSet metaData;
 
@@ -72,7 +73,7 @@ public class JdbcCursorItemReader<T> extends AbstractCursorItemReader<T> {
      *
      * @param rowMapper
      */
-    public void setRowMapper(RowMapper<T> rowMapper) {
+    public void setRowMapper(RowMapper rowMapper) {
         this.rowMapper = rowMapper;
     }
 
@@ -110,6 +111,7 @@ public class JdbcCursorItemReader<T> extends AbstractCursorItemReader<T> {
         Assert.notNull(rowMapper, "RowMapper must be provided");
     }
 
+
     @Override
     protected void openCursor(Connection con) {
         try {
@@ -125,17 +127,20 @@ public class JdbcCursorItemReader<T> extends AbstractCursorItemReader<T> {
                 preparedStatementSetter.setValues(preparedStatement);
             }
             this.rs = preparedStatement.executeQuery();
-            handleWarnings(preparedStatement);        }
+            handleWarnings(preparedStatement);
+        }
         catch (SQLException se) {
             close();
             throw getExceptionTranslator().translate("Executing query", getSql(), se);
         }
+
     }
 
 
     @Override
-    protected T readCursor(ResultSet rs, int currentRow) throws SQLException {
-        return rowMapper.mapRow(rs, currentRow);
+    protected Item readCursor(ResultSet rs, int currentRow) throws SQLException {
+        Map<String, Object> data = rowMapper.mapRow(rs, currentRow);
+        return new Item(this.primaryKey, data);
     }
 
     /**
