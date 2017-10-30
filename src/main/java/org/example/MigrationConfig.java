@@ -9,15 +9,13 @@ import com.marklogic.client.batch.XccBatchWriter;
 import com.marklogic.client.document.DocumentWriteOperation;
 import com.marklogic.client.helper.LoggingObject;
 import com.marklogic.spring.batch.Options;
-import com.marklogic.spring.batch.columnmap.ColumnMapSerializer;
-import com.marklogic.spring.batch.columnmap.DefaultStaxColumnMapSerializer;
-import com.marklogic.spring.batch.columnmap.JacksonColumnMapSerializer;
 import com.marklogic.spring.batch.config.support.OptionParserConfigurer;
-import com.marklogic.spring.batch.item.writer.MarkLogicItemWriter;
 import com.marklogic.xcc.ContentSource;
 import com.marklogic.xcc.ContentSourceFactory;
 import custom.AllTablesItemReader;
+import custom.ColumnMapRowMapper;
 import custom.JdbcCursorItemReader;
+import custom.RdfTripleItemWriter;
 import joptsimple.OptionParser;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -30,7 +28,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
-import org.springframework.jdbc.core.ColumnMapRowMapper;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.util.StringUtils;
 
@@ -96,6 +93,7 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 	                 @Value("#{jobParameters['sql']}") String sql,
 					 @Value("#{jobParameters['pk']}") String pk,
 	                 @Value("#{jobParameters['root_local_name']}") String rootLocalName,
+					 @Value("#{jobParameters['name']}") String name,
 	                 @Value("#{jobParameters['document_type']}") String documentType) {
 
 		// Determine the Spring Batch chunk size
@@ -112,6 +110,7 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 		} else {
 			logger.info("SQL: " + sql);
 			logger.info("Primary Key: " + pk);
+			logger.info("Name: " + name);
 			logger.info("Root local name: " + rootLocalName);
 		}
 		logger.info("Collections: " + collections);
@@ -126,48 +125,33 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 			// Uses Spring Batch's JdbcCursorItemReader and Spring JDBC's ColumnMapRowMapper to map each row
 			// to a Map<String, Object>. Normally, if you want more control, standard practice is to bind column values to
 			// a POJO and perform any validation/transformation/etc you need to on that object.
-			JdbcCursorItemReader r = new JdbcCursorItemReader();
-			r.setRowMapper(new ColumnMapRowMapper());
+			JdbcCursorItemReader<Map<String, Object>> r = new JdbcCursorItemReader();
+			r.setRowMapper(new ColumnMapRowMapper(name, pk));
 			r.setDataSource(buildDataSource());
 			r.setSql(sql);
 			r.setPrimaryKey(pk);
+			r.setName(name);
 			reader = r;
 		}
 
-		// Processor - this is a very basic implementation for converting a column map to an XML or JSON string
-		ColumnMapSerializer serializer = null;
-		if (documentType != null && documentType.toLowerCase().equals("json")) {
-			serializer = new JacksonColumnMapSerializer();
-		} else {
-			serializer = new DefaultStaxColumnMapSerializer();
-		}
-
-		ColumnMapProcessor processor = new ColumnMapProcessor(serializer);
-		if (rootLocalName != null) {
-			processor.setRootLocalName(rootLocalName);
-		}
-		if (collections != null) {
-			processor.setCollections(collections.split(","));
-		}
-		if (permissions != null) {
-			processor.setPermissions(permissions.split(","));
-		}
-		if (documentType != null && documentType.toLowerCase().equals("json")) {
-			processor.setUriSuffix(".json");
-		}
+		ColumnMapProcessor processor = new ColumnMapProcessor();
 
 		// Writer - BatchWriter is from ml-javaclient-util, MarkLogicItemWriter is from
 		// marklogic-spring-batch
+
 		BatchWriter batchWriter;
 		if ("true".equals(xcc)) {
 			batchWriter = new XccBatchWriter(buildContentSources(hosts));
 		} else {
 			batchWriter = new RestBatchWriter(buildDatabaseClients(hosts));
 		}
+
 		if (threadCount != null && threadCount > 0) {
 			((BatchWriterSupport) batchWriter).setThreadCount(threadCount);
 		}
-		MarkLogicItemWriter writer = new MarkLogicItemWriter(batchWriter);
+		//MarkLogicItemWriter writer = new MarkLogicItemWriter(batchWriter);
+
+		RdfTripleItemWriter writer = new RdfTripleItemWriter(batchWriter);
 
 		// Run the job!
 		logger.info("Initialized components, launching job");

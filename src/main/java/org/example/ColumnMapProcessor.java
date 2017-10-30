@@ -1,88 +1,40 @@
 package org.example;
 
-import com.marklogic.client.document.DocumentWriteOperation;
-import com.marklogic.client.impl.DocumentWriteOperationImpl;
-import com.marklogic.client.io.DocumentMetadataHandle;
-import com.marklogic.client.io.StringHandle;
-import com.marklogic.spring.batch.columnmap.ColumnMapSerializer;
+import com.hp.hpl.jena.graph.NodeFactory;
+import com.hp.hpl.jena.graph.Triple;
+import custom.ColumnMapRowMapper;
 import org.springframework.batch.item.ItemProcessor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * This is a very basic processor for taking a column map (a Map<String, Object>) and serializing it via a
  * ColumnMapSerializer, and then providing very basic support for setting permissions and collections.
  * marklogic-spring-batch provides other options for e.g. customizing the URI. Feel free to customize any way you'd like.
  */
-public class ColumnMapProcessor implements ItemProcessor<Map<String, Object>, DocumentWriteOperation> {
+public class ColumnMapProcessor implements ItemProcessor<Map<String, Object>, List<Triple>> {
 
-	private ColumnMapSerializer columnMapSerializer;
-	private String tableNameKey = "_tableName";
-	private String rootLocalName = "CHANGEME";
+	private String uriPrefix = "http://localhost/";
 
-	// Expected to be role,capability,role,capability,etc.
-	private String[] permissions;
-
-	private String[] collections;
-
-	private String uriSuffix = ".xml";
-
-	public ColumnMapProcessor(ColumnMapSerializer columnMapSerializer) {
-		this.columnMapSerializer = columnMapSerializer;
+	public ColumnMapProcessor() {
 	}
 
 	@Override
-	public DocumentWriteOperation process(Map<String, Object> item) throws Exception {
-		String tableName = null;
-		if (item.containsKey(tableNameKey)) {
-			tableName = (String)item.get(tableNameKey);
-			item.remove(tableNameKey);
+	public List<Triple> process(Map<String, Object> item) throws Exception {
+		String pk = (String) item.get(ColumnMapRowMapper.PK_MAP_KEY);
+		String name = (String) item.get(ColumnMapRowMapper.NAME_MAP_KEY);
+
+		List<Triple> triples = new ArrayList<>();
+		for (Map.Entry<String, Object> entry : item.entrySet()) {
+			triples.add(
+				new Triple(
+						NodeFactory.createURI(uriPrefix + "/" + name + "#" + item.get(pk)),
+						NodeFactory.createURI(entry.getKey()),
+						NodeFactory.createURI(entry.getValue().toString())));
 		}
 
-		String thisRootLocalName = tableName != null ? tableName : rootLocalName;
-		String content = columnMapSerializer.serializeColumnMap(item, thisRootLocalName);
-
-		String uuid = UUID.randomUUID().toString();
-		String uri = "/" + thisRootLocalName + "/" + uuid + uriSuffix;
-
-		DocumentMetadataHandle metadata = new DocumentMetadataHandle();
-		if (collections != null) {
-			metadata.withCollections(collections);
-		}
-		if (tableName != null) {
-			metadata.withCollections(tableName);
-		}
-
-		if (permissions != null) {
-			for (int i = 0; i < permissions.length; i += 2) {
-				String role = permissions[i];
-				DocumentMetadataHandle.Capability c = DocumentMetadataHandle.Capability.valueOf(permissions[i + 1].toUpperCase());
-				metadata.withPermission(role, c);
-			}
-		}
-
-		return new DocumentWriteOperationImpl(DocumentWriteOperation.OperationType.DOCUMENT_WRITE,
-			uri, metadata, new StringHandle(content));
-	}
-
-	public void setRootLocalName(String rootLocalName) {
-		this.rootLocalName = rootLocalName;
-	}
-
-	public void setCollections(String[] collections) {
-		this.collections = collections;
-	}
-
-	public void setPermissions(String[] permissions) {
-		this.permissions = permissions;
-	}
-
-	public void setTableNameKey(String tableNameKey) {
-		this.tableNameKey = tableNameKey;
-	}
-
-	public void setUriSuffix(String uriSuffix) {
-		this.uriSuffix = uriSuffix;
+		return triples;
 	}
 }

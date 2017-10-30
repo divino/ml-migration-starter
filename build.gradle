@@ -63,6 +63,7 @@ task migrate(type: JavaExec) {
 		"--all_tables", all_tables,
 		"--document_type", document_type
 	]
+	logger.error("sample " + args)
 }
 
 task help(type: JavaExec) {

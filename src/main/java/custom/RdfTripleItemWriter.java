@@ -3,8 +3,10 @@ package custom;
 import java.util.List;
 import java.util.Map;
 
+import com.marklogic.client.batch.BatchWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.ExecutionContext;
-import org.springframework.batch.item.ItemStream;
 import org.springframework.batch.item.ItemStreamException;
 import org.springframework.batch.item.ItemWriter;
 
@@ -27,13 +29,23 @@ import com.marklogic.semantics.jena.MarkLogicDatasetGraphFactory;
  * @author viyengar
  *
  */
-public class RdfTripleItemWriter implements ItemWriter<Map<String, Object>> {
+public class RdfTripleItemWriter implements ItemWriter<Triple> {
+
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private List<DatabaseClient> databaseClients;
+    private int clientIndex = 0;
+    private boolean releaseDatabaseClients = true;
 
     // Configurable
     private String graphName;
     private Node graphNode;
     private MarkLogicDatasetGraph dsg;
     private DatabaseClient client;
+
+    public RdfTripleItemWriter(BatchWriter batchWriter) {
+        this.databaseClients = databaseClients;
+    }
 
     public RdfTripleItemWriter(DatabaseClient client, String graphName) {
         this.client = client;
@@ -50,14 +62,11 @@ public class RdfTripleItemWriter implements ItemWriter<Map<String, Object>> {
      *
      */
     @Override
-    public void write(List<? extends Map<String, Object>> items) throws Exception {
+    public void write(List<? extends Triple> items) throws Exception {
         Graph graph = GraphFactory.createDefaultGraph();
         logger.info("writing triple records");
-        for (Map<String, Object> columnMap : items) {
-            String idKey = columnMap.keySet().iterator().next();
-            Object id = columnMap.get(idKey);
-            logger.debug("KEY [" + idKey + "]");
-            writeRecords((Triple)id, graph);
+        for (Triple triple : items) {
+            writeRecords(triple, graph);
         }
         logger.info("Triple inserted count [" + this.getTripleCount() + "]");
     }
@@ -88,7 +97,6 @@ public class RdfTripleItemWriter implements ItemWriter<Map<String, Object>> {
      * Make sure the graph node and MarkLogic data set graphs are initialized when the
      * context is opened
      */
-    @Override
     public void open(ExecutionContext executionContext) {
         if (graphNode == null) {
             graphNode = NodeFactory.createURI(graphName);
@@ -103,7 +111,6 @@ public class RdfTripleItemWriter implements ItemWriter<Map<String, Object>> {
      * This close method from ItemStream gives us a way to write all the remaining records in our map after all the rows
      * have been read from the Triple data file.
      */
-    @Override
     public void close() throws ItemStreamException {
         if (logger.isDebugEnabled()) {
             logger.debug("Closing Writer, and writing remaining records");

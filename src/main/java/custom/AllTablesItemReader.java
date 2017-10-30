@@ -1,13 +1,13 @@
 package custom;
 
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamException;
-//import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.support.AbstractItemStreamItemReader;
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.ColumnMapRowMapper;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -39,7 +39,6 @@ public class AllTablesItemReader extends AbstractItemStreamItemReader<Map<String
     private int tableNameIndex = 0;
     private String tableNameKey = DEFAULT_TABLE_NAME_KEY;
     private String databaseVendor = "";
-    private Map<String, String> tablePkMapping;
 
     // For ignoring certain table names
     private Set<String> excludeTableNames;
@@ -65,10 +64,8 @@ public class AllTablesItemReader extends AbstractItemStreamItemReader<Map<String
     public void open(ExecutionContext executionContext) throws ItemStreamException {
         tableNames = getTableNames();
         tableReaders = new HashMap<>();
-        tablePkMapping = new HashMap<>();
         for (String tableName : tableNames) {
             tableReaders.put(tableName, buildTableReader(tableName, executionContext));
-            tablePkMapping.put(tableName, getPrimaryKey(tableName));
         }
     }
 
@@ -161,9 +158,8 @@ public class AllTablesItemReader extends AbstractItemStreamItemReader<Map<String
     protected JdbcCursorItemReader<Map<String, Object>> buildTableReader(String tableName, ExecutionContext executionContext) {
         JdbcCursorItemReader<Map<String, Object>> reader = new JdbcCursorItemReader<>();
         reader.setDataSource(dataSource);
-        reader.setRowMapper(new ColumnMapRowMapper());
+        reader.setRowMapper(new ColumnMapRowMapper(tableName, getPrimaryKey(tableName)));
         reader.setSql(getSqlQueryForTable(tableName));
-        reader.setPrimaryKey(this.tablePkMapping.get(tableName));
         reader.open(executionContext);
         return reader;
     }

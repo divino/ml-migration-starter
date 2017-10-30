@@ -1,5 +1,3 @@
-package custom;
-
 /*
  * Copyright 2006-2013 the original author or authors.
  *
@@ -16,15 +14,19 @@ package custom;
  * limitations under the License.
  */
 
+package custom;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 import org.springframework.batch.item.database.AbstractCursorItemReader;
 import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
-
-import java.sql.*;
-import java.util.Map;
 
 /**
  * <p>
@@ -49,7 +51,7 @@ import java.util.Map;
  * @author Robert Kasanicky
  * @author Thomas Risberg
  */
-public class JdbcCursorItemReader extends AbstractCursorItemReader {
+public class JdbcCursorItemReader<T> extends AbstractCursorItemReader<T> {
 
     PreparedStatement preparedStatement;
 
@@ -59,13 +61,14 @@ public class JdbcCursorItemReader extends AbstractCursorItemReader {
 
     String primaryKey;
 
-    RowMapper<Map<String, Object>> rowMapper;
+    //if table, use tableName
+    String groupName;
 
-    private ResultSet metaData;
+    RowMapper<T> rowMapper;
 
     public JdbcCursorItemReader() {
         super();
-        setName(ClassUtils.getShortName(org.springframework.batch.item.database.JdbcCursorItemReader.class));
+        setName(ClassUtils.getShortName(JdbcCursorItemReader.class));
     }
 
     /**
@@ -73,7 +76,7 @@ public class JdbcCursorItemReader extends AbstractCursorItemReader {
      *
      * @param rowMapper
      */
-    public void setRowMapper(RowMapper rowMapper) {
+    public void setRowMapper(RowMapper<T> rowMapper) {
         this.rowMapper = rowMapper;
     }
 
@@ -136,11 +139,9 @@ public class JdbcCursorItemReader extends AbstractCursorItemReader {
 
     }
 
-
     @Override
-    protected Item readCursor(ResultSet rs, int currentRow) throws SQLException {
-        Map<String, Object> data = rowMapper.mapRow(rs, currentRow);
-        return new Item(this.primaryKey, data);
+    protected T readCursor(ResultSet rs, int currentRow) throws SQLException {
+        return rowMapper.mapRow(rs, currentRow);
     }
 
     /**
@@ -156,6 +157,7 @@ public class JdbcCursorItemReader extends AbstractCursorItemReader {
         return this.sql;
     }
 
+
     public String getPrimaryKey() {
         return primaryKey;
     }
@@ -163,4 +165,13 @@ public class JdbcCursorItemReader extends AbstractCursorItemReader {
     public void setPrimaryKey(String primaryKey) {
         this.primaryKey = primaryKey;
     }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
+    }
+
 }
