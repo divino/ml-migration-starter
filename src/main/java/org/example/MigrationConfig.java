@@ -71,7 +71,7 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 	                 @Value("#{jobParameters['hosts']}") String hosts,
 	                 @Value("#{jobParameters['sql']}") String sql,
 					 @Value("#{jobParameters['pk']}") String pk,
-					 @Value("#{jobParameters['all_tables']}") boolean allTables,
+					 @Value("#{jobParameters['all_tables']}") String allTables,
 					 @Value("#{jobParameters['graph_name']}") String graphName,
 					 @Value("#{jobParameters['base_iri']}") String baseIri) {
 
@@ -97,7 +97,7 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 		}
 
 		ItemReader<Map<String, Object>> reader = null;
-		if (allTables) {
+		if ("true".equals(allTables)) {
 			// Use AllTablesReader to process rows from every table
 			reader = new AllTablesItemReader(buildDataSource());
 		} else {
