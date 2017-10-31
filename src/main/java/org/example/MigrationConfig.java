@@ -111,7 +111,7 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 		reader = r;
 
 		ColumnMapProcessor processor = new ColumnMapProcessor(baseIri);
-		RdfTripleItemWriter writer = new RdfTripleItemWriter(buildDatabaseClient(hosts), "sample");
+		RdfTripleItemWriter writer = new RdfTripleItemWriter(buildDatabaseClient(hosts), graphName);
 
 		// Run the job!
 		logger.info("Initialized components, launching job");
