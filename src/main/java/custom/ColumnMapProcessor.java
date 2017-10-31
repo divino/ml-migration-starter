@@ -36,6 +36,8 @@ public class ColumnMapProcessor implements ItemProcessor<Map<String, Object>, Li
 					object = NodeFactory.createLiteral(entry.getValue().toString(), XSDDatatype.XSDinteger);
 				} else if ("DATE".equals(metadata.get(entry.getKey()))) {
 					object = NodeFactory.createLiteral(entry.getValue().toString(), XSDDatatype.XSDdate);
+				} else if ("DECIMAL".equals(metadata.get(entry.getKey()))) {
+					object = NodeFactory.createLiteral(entry.getValue().toString(), XSDDatatype.XSDdecimal);
 				} else {
 					object = NodeFactory.createLiteral(entry.getValue().toString());
 				}

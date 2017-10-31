@@ -114,6 +114,8 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 		}
 
 		ColumnMapProcessor processor = new ColumnMapProcessor(baseIri);
+
+		//TODO: find a way to pass the table name as graphName when processing all_tables = true
 		RdfTripleItemWriter writer = new RdfTripleItemWriter(buildDatabaseClient(hosts), graphName);
 
 		// Run the job!
