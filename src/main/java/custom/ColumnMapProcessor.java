@@ -32,12 +32,12 @@ public class ColumnMapProcessor implements ItemProcessor<Map<String, Object>, Li
 		for (Map.Entry<String, Object> entry : item.entrySet()) {
 			if (!entry.getKey().startsWith(ColumnMapRowMapper.PRIVATE_MAP_KEY_PREFIX)) {
 				Node object = null;
-				if (metadata.get(entry.getKey()).equals("VARCHAR")) {
-					object = NodeFactory.createLiteral(entry.getValue().toString());
-				} else if (metadata.get(entry.getKey()).equals("INTEGER")) {
+				if (metadata.get(entry.getKey()).equals("INTEGER")) {
 					object = NodeFactory.createLiteral(entry.getValue().toString(), XSDDatatype.XSDinteger);
 				} else if (metadata.get(entry.getKey()).equals("DATE")) {
 					object = NodeFactory.createLiteral(entry.getValue().toString(), XSDDatatype.XSDdate);
+				} else {
+					object = NodeFactory.createLiteral(entry.getValue().toString());
 				}
 				triples.add(
 					new Triple(
