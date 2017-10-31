@@ -157,7 +157,6 @@ public class JdbcCursorItemReader<T> extends AbstractCursorItemReader<T> {
         return this.sql;
     }
 
-
     public String getPrimaryKey() {
         return primaryKey;
     }

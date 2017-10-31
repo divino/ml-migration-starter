@@ -1,18 +1,11 @@
 package org.example;
 
+import com.hp.hpl.jena.graph.Triple;
 import com.marklogic.client.DatabaseClient;
 import com.marklogic.client.DatabaseClientFactory;
-import com.marklogic.client.batch.BatchWriter;
-import com.marklogic.client.batch.BatchWriterSupport;
-import com.marklogic.client.batch.RestBatchWriter;
-import com.marklogic.client.batch.XccBatchWriter;
-import com.marklogic.client.document.DocumentWriteOperation;
 import com.marklogic.client.helper.LoggingObject;
 import com.marklogic.spring.batch.Options;
 import com.marklogic.spring.batch.config.support.OptionParserConfigurer;
-import com.marklogic.xcc.ContentSource;
-import com.marklogic.xcc.ContentSourceFactory;
-import custom.AllTablesItemReader;
 import custom.ColumnMapRowMapper;
 import custom.JdbcCursorItemReader;
 import custom.RdfTripleItemWriter;
@@ -32,7 +25,6 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.util.StringUtils;
 
 import javax.sql.DataSource;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -53,14 +45,8 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 	 */
 	@Override
 	public void configureOptionParser(OptionParser parser) {
-		parser.accepts("all_tables", "Set this to 'true' to ignore the 'sql' argument and read rows from all tables").withRequiredArg();
-		parser.accepts("collections", "Comma-delimited sequence of collections to insert each document into").withRequiredArg();
 		parser.accepts("hosts", "Comma-delimited sequence of host names of MarkLogic nodes to write documents to").withRequiredArg();
-		parser.accepts("permissions", "Comma-delimited sequence of permissions to apply to each document; role,capability,role,capability,etc").withRequiredArg();
-		parser.accepts("root_local_name", "Name of the root element in each document written to MarkLogic").withRequiredArg();
 		parser.accepts("sql", "The SQL query for selecting rows to migrate").withRequiredArg();
-		parser.accepts("thread_count", "The number of threads to use for writing to MarkLogic").withRequiredArg();
-		parser.accepts("xcc", "Set to 'true' to use XCC instead of the REST API to write to MarkLogic").withRequiredArg();
 	}
 
 	/**
@@ -84,17 +70,10 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 	@Bean
 	@JobScope
 	public Step step(StepBuilderFactory stepBuilderFactory,
-	                 @Value("#{jobParameters['all_tables']}") String allTables,
-	                 @Value("#{jobParameters['xcc']}") String xcc,
-	                 @Value("#{jobParameters['collections']}") String collections,
-	                 @Value("#{jobParameters['permissions']}") String permissions,
 	                 @Value("#{jobParameters['hosts']}") String hosts,
-	                 @Value("#{jobParameters['thread_count'] ?: 4}") Integer threadCount,
 	                 @Value("#{jobParameters['sql']}") String sql,
 					 @Value("#{jobParameters['pk']}") String pk,
-	                 @Value("#{jobParameters['root_local_name']}") String rootLocalName,
-					 @Value("#{jobParameters['name']}") String name,
-	                 @Value("#{jobParameters['document_type']}") String documentType) {
+					 @Value("#{jobParameters['name']}") String name) {
 
 		// Determine the Spring Batch chunk size
 		int chunkSize = 100;
@@ -105,100 +84,44 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 
 		logger.info("Chunk size: " + env.getProperty(Options.CHUNK_SIZE));
 		logger.info("Hosts: " + hosts);
-		if (StringUtils.hasText(allTables)) {
-			logger.info("Migrate all tables: " + allTables);
-		} else {
+		if (StringUtils.hasText(sql) &&
+			StringUtils.hasText(pk) &&
+			StringUtils.hasText(name)) {
 			logger.info("SQL: " + sql);
 			logger.info("Primary Key: " + pk);
 			logger.info("Name: " + name);
-			logger.info("Root local name: " + rootLocalName);
+		} else {
+			//logger.info("Migrate all tables: " + allTables);
+			logger.error("All tables not yet supported.");
+			throw new RuntimeException();
 		}
-		logger.info("Collections: " + collections);
-		logger.info("Permissions: " + permissions);
-		logger.info("Thread count: " + threadCount);
 
 		ItemReader<Map<String, Object>> reader = null;
-		if ("true".equals(allTables)) {
-			// Use AllTablesReader to process rows from every table
-			reader = new AllTablesItemReader(buildDataSource());
-		} else {
-			// Uses Spring Batch's JdbcCursorItemReader and Spring JDBC's ColumnMapRowMapper to map each row
-			// to a Map<String, Object>. Normally, if you want more control, standard practice is to bind column values to
-			// a POJO and perform any validation/transformation/etc you need to on that object.
-			JdbcCursorItemReader<Map<String, Object>> r = new JdbcCursorItemReader();
-			r.setRowMapper(new ColumnMapRowMapper(name, pk));
-			r.setDataSource(buildDataSource());
-			r.setSql(sql);
-			r.setPrimaryKey(pk);
-			r.setName(name);
-			reader = r;
-		}
+		// Uses Spring Batch's JdbcCursorItemReader and Spring JDBC's ColumnMapRowMapper to map each row
+		// to a Map<String, Object>. Normally, if you want more control, standard practice is to bind column values to
+		// a POJO and perform any validation/transformation/etc you need to on that object.
+		JdbcCursorItemReader<Map<String, Object>> r = new JdbcCursorItemReader();
+		r.setRowMapper(new ColumnMapRowMapper(name, pk));
+		r.setDataSource(buildDataSource());
+		r.setSql(sql);
+		r.setPrimaryKey(pk);
+		r.setName(name);
+		reader = r;
 
 		ColumnMapProcessor processor = new ColumnMapProcessor();
-
-		// Writer - BatchWriter is from ml-javaclient-util, MarkLogicItemWriter is from
-		// marklogic-spring-batch
-
-		BatchWriter batchWriter;
-		if ("true".equals(xcc)) {
-			batchWriter = new XccBatchWriter(buildContentSources(hosts));
-		} else {
-			batchWriter = new RestBatchWriter(buildDatabaseClients(hosts));
-		}
-
-		if (threadCount != null && threadCount > 0) {
-			((BatchWriterSupport) batchWriter).setThreadCount(threadCount);
-		}
-		//MarkLogicItemWriter writer = new MarkLogicItemWriter(batchWriter);
-
-		RdfTripleItemWriter writer = new RdfTripleItemWriter(batchWriter);
+		RdfTripleItemWriter writer = new RdfTripleItemWriter(buildDatabaseClient(hosts), "sample");
 
 		// Run the job!
 		logger.info("Initialized components, launching job");
 		return stepBuilderFactory.get("step1")
-			.<Map<String, Object>, DocumentWriteOperation>chunk(chunkSize)
+			.<Map<String, Object>, List<Triple>>chunk(chunkSize)
 			.reader(reader)
 			.processor(processor)
 			.writer(writer)
 			.build();
 	}
 
-	/**
-	 * Build a list of XCC ContentSource objects based on the value of hosts, which may be a comma-delimited string of
-	 * host names.
-	 *
-	 * @param hosts
-	 * @return
-	 */
-	protected List<ContentSource> buildContentSources(String hosts) {
-		Integer port = Integer.parseInt(env.getProperty(Options.PORT));
-		String username = env.getProperty(Options.USERNAME);
-		String password = env.getProperty(Options.PASSWORD);
-		String database = env.getProperty(Options.DATABASE);
-		logger.info("XCC username: " + username);
-		logger.info("XCC database: " + database);
-		List<ContentSource> list = new ArrayList<>();
-		if (hosts != null) {
-			for (String host : hosts.split(",")) {
-				logger.info("Creating content source for host: " + host);
-				list.add(ContentSourceFactory.newContentSource(host, port, username, password, database));
-			}
-		} else {
-			String host = env.getProperty(Options.HOST);
-			logger.info("Creating content source for host: " + host);
-			list.add(ContentSourceFactory.newContentSource(host, port, username, password, database));
-		}
-		return list;
-	}
-
-	/**
-	 * Build a list of Java Client API DatabaseClient objects based on the value of hosts, which may be a
-	 * comma-delimited string of host names.
-	 *
-	 * @param hosts
-	 * @return
-	 */
-	protected List<DatabaseClient> buildDatabaseClients(String hosts) {
+	protected DatabaseClient buildDatabaseClient(String hosts) {
 		Integer port = Integer.parseInt(env.getProperty(Options.PORT));
 		String username = env.getProperty(Options.USERNAME);
 		String password = env.getProperty(Options.PASSWORD);
@@ -208,24 +131,12 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 		if (auth != null) {
 			authentication = DatabaseClientFactory.Authentication.valueOf(auth.toUpperCase());
 		}
-
 		logger.info("Client username: " + username);
 		logger.info("Client database: " + database);
 		logger.info("Client authentication: " + authentication.name());
-
-		List<DatabaseClient> databaseClients = new ArrayList<>();
-		if (hosts != null) {
-			for (String host : hosts.split(",")) {
-				logger.info("Creating client for host: " + host);
-				databaseClients.add(DatabaseClientFactory.newClient(host, port, database, username, password, authentication));
-			}
-		} else {
-			String host = env.getProperty(Options.HOST);
-			logger.info("Creating client for host: " + host);
-			databaseClients.add(DatabaseClientFactory.newClient(host, port, database, username, password, authentication));
-		}
-
-		return databaseClients;
+		String host = env.getProperty(Options.HOST);
+		logger.info("Creating client for host: " + host);
+		return DatabaseClientFactory.newClient(host, port, database, username, password, authentication);
 	}
 
 	/**

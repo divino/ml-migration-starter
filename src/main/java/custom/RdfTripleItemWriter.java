@@ -1,9 +1,8 @@
 package custom;
 
 import java.util.List;
-import java.util.Map;
 
-import com.marklogic.client.batch.BatchWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.ExecutionContext;
@@ -29,23 +28,15 @@ import com.marklogic.semantics.jena.MarkLogicDatasetGraphFactory;
  * @author viyengar
  *
  */
-public class RdfTripleItemWriter implements ItemWriter<Triple> {
+public class RdfTripleItemWriter implements ItemWriter<List<Triple>> {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
-
-    private List<DatabaseClient> databaseClients;
-    private int clientIndex = 0;
-    private boolean releaseDatabaseClients = true;
 
     // Configurable
     private String graphName;
     private Node graphNode;
     private MarkLogicDatasetGraph dsg;
     private DatabaseClient client;
-
-    public RdfTripleItemWriter(BatchWriter batchWriter) {
-        this.databaseClients = databaseClients;
-    }
 
     public RdfTripleItemWriter(DatabaseClient client, String graphName) {
         this.client = client;
@@ -62,11 +53,13 @@ public class RdfTripleItemWriter implements ItemWriter<Triple> {
      *
      */
     @Override
-    public void write(List<? extends Triple> items) throws Exception {
+    public void write(List<? extends List<Triple>> items) throws Exception {
         Graph graph = GraphFactory.createDefaultGraph();
         logger.info("writing triple records");
-        for (Triple triple : items) {
-            writeRecords(triple, graph);
+        for (List<Triple> tripleList : items) {
+            for (Triple triple: tripleList) {
+                writeRecords(triple, graph);
+            }
         }
         logger.info("Triple inserted count [" + this.getTripleCount() + "]");
     }

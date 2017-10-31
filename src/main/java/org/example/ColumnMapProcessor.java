@@ -1,5 +1,7 @@
 package org.example;
 
+import com.github.jsonldjava.core.RDFDatasetUtils;
+import com.hp.hpl.jena.datatypes.RDFDatatype;
 import com.hp.hpl.jena.graph.NodeFactory;
 import com.hp.hpl.jena.graph.Triple;
 import custom.ColumnMapRowMapper;
@@ -16,7 +18,7 @@ import java.util.Map;
  */
 public class ColumnMapProcessor implements ItemProcessor<Map<String, Object>, List<Triple>> {
 
-	private String uriPrefix = "http://localhost/";
+	private String uriPrefix = "http://localhost";
 
 	public ColumnMapProcessor() {
 	}
@@ -25,16 +27,20 @@ public class ColumnMapProcessor implements ItemProcessor<Map<String, Object>, Li
 	public List<Triple> process(Map<String, Object> item) throws Exception {
 		String pk = (String) item.get(ColumnMapRowMapper.PK_MAP_KEY);
 		String name = (String) item.get(ColumnMapRowMapper.NAME_MAP_KEY);
+		Map<String, String> metadata = (Map<String, String>) item.get(ColumnMapRowMapper.METADATA_MAP_KEY);
 
 		List<Triple> triples = new ArrayList<>();
 		for (Map.Entry<String, Object> entry : item.entrySet()) {
-			triples.add(
-				new Triple(
+			if (!entry.getKey().startsWith(ColumnMapRowMapper.PRIVATE_MAP_KEY_PREFIX)) {
+				triples.add(
+					new Triple(
 						NodeFactory.createURI(uriPrefix + "/" + name + "#" + item.get(pk)),
 						NodeFactory.createURI(entry.getKey()),
-						NodeFactory.createURI(entry.getValue().toString())));
+						NodeFactory.createLiteral(entry.getValue().toString())
+					)
+				);
+			}
 		}
-
 		return triples;
 	}
 }
