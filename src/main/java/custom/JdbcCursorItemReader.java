@@ -51,111 +51,9 @@ import org.springframework.util.ClassUtils;
  * @author Robert Kasanicky
  * @author Thomas Risberg
  */
-public class JdbcCursorItemReader<T> extends AbstractCursorItemReader<T> {
-
-    PreparedStatement preparedStatement;
-
-    PreparedStatementSetter preparedStatementSetter;
-
-    String sql;
+public class JdbcCursorItemReader<T> extends org.springframework.batch.item.database.JdbcCursorItemReader<T> {
 
     String primaryKey;
-
-    //if table, use tableName
-    String groupName;
-
-    RowMapper<T> rowMapper;
-
-    public JdbcCursorItemReader() {
-        super();
-        setName(ClassUtils.getShortName(JdbcCursorItemReader.class));
-    }
-
-    /**
-     * Set the RowMapper to be used for all calls to read().
-     *
-     * @param rowMapper
-     */
-    public void setRowMapper(RowMapper<T> rowMapper) {
-        this.rowMapper = rowMapper;
-    }
-
-    /**
-     * Set the SQL statement to be used when creating the cursor. This statement
-     * should be a complete and valid SQL statement, as it will be run directly
-     * without any modification.
-     *
-     * @param sql
-     */
-    public void setSql(String sql) {
-        this.sql = sql;
-    }
-
-    /**
-     * Set the PreparedStatementSetter to use if any parameter values that need
-     * to be set in the supplied query.
-     *
-     * @param preparedStatementSetter
-     */
-    public void setPreparedStatementSetter(PreparedStatementSetter preparedStatementSetter) {
-        this.preparedStatementSetter = preparedStatementSetter;
-    }
-
-    /**
-     * Assert that mandatory properties are set.
-     *
-     * @throws IllegalArgumentException if either data source or SQL properties
-     * not set.
-     */
-    @Override
-    public void afterPropertiesSet() throws Exception {
-        super.afterPropertiesSet();
-        Assert.notNull(sql, "The SQL query must be provided");
-        Assert.notNull(rowMapper, "RowMapper must be provided");
-    }
-
-
-    @Override
-    protected void openCursor(Connection con) {
-        try {
-            if (isUseSharedExtendedConnection()) {
-                preparedStatement = con.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY,
-                        ResultSet.HOLD_CURSORS_OVER_COMMIT);
-            }
-            else {
-                preparedStatement = con.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-            }
-            applyStatementSettings(preparedStatement);
-            if (this.preparedStatementSetter != null) {
-                preparedStatementSetter.setValues(preparedStatement);
-            }
-            this.rs = preparedStatement.executeQuery();
-            handleWarnings(preparedStatement);
-        }
-        catch (SQLException se) {
-            close();
-            throw getExceptionTranslator().translate("Executing query", getSql(), se);
-        }
-
-    }
-
-    @Override
-    protected T readCursor(ResultSet rs, int currentRow) throws SQLException {
-        return rowMapper.mapRow(rs, currentRow);
-    }
-
-    /**
-     * Close the cursor and database connection.
-     */
-    @Override
-    protected void cleanupOnClose() throws Exception {
-        JdbcUtils.closeStatement(this.preparedStatement);
-    }
-
-    @Override
-    public String getSql() {
-        return this.sql;
-    }
 
     public String getPrimaryKey() {
         return primaryKey;
@@ -164,13 +62,4 @@ public class JdbcCursorItemReader<T> extends AbstractCursorItemReader<T> {
     public void setPrimaryKey(String primaryKey) {
         this.primaryKey = primaryKey;
     }
-
-    public String getGroupName() {
-        return groupName;
-    }
-
-    public void setGroupName(String groupName) {
-        this.groupName = groupName;
-    }
-
 }

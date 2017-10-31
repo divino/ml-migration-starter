@@ -1,7 +1,9 @@
-package org.example;
+package custom;
 
 import com.github.jsonldjava.core.RDFDatasetUtils;
 import com.hp.hpl.jena.datatypes.RDFDatatype;
+import com.hp.hpl.jena.datatypes.xsd.XSDDatatype;
+import com.hp.hpl.jena.graph.Node;
 import com.hp.hpl.jena.graph.NodeFactory;
 import com.hp.hpl.jena.graph.Triple;
 import custom.ColumnMapRowMapper;
@@ -28,15 +30,20 @@ public class ColumnMapProcessor implements ItemProcessor<Map<String, Object>, Li
 		String pk = (String) item.get(ColumnMapRowMapper.PK_MAP_KEY);
 		String name = (String) item.get(ColumnMapRowMapper.NAME_MAP_KEY);
 		Map<String, String> metadata = (Map<String, String>) item.get(ColumnMapRowMapper.METADATA_MAP_KEY);
-
 		List<Triple> triples = new ArrayList<>();
 		for (Map.Entry<String, Object> entry : item.entrySet()) {
 			if (!entry.getKey().startsWith(ColumnMapRowMapper.PRIVATE_MAP_KEY_PREFIX)) {
+				Node object = null;
+				if (metadata.get(entry.getKey()).equals("VARCHAR")) {
+					object = NodeFactory.createLiteral(entry.getValue().toString());
+				} else if (metadata.get(entry.getKey()).equals("INTEGER")) {
+					object = NodeFactory.createLiteral(entry.getValue().toString(), XSDDatatype.XSDinteger);
+				}
 				triples.add(
 					new Triple(
 						NodeFactory.createURI(uriPrefix + "/" + name + "#" + item.get(pk)),
 						NodeFactory.createURI(entry.getKey()),
-						NodeFactory.createLiteral(entry.getValue().toString())
+						object
 					)
 				);
 			}

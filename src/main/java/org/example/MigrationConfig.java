@@ -6,6 +6,7 @@ import com.marklogic.client.DatabaseClientFactory;
 import com.marklogic.client.helper.LoggingObject;
 import com.marklogic.spring.batch.Options;
 import com.marklogic.spring.batch.config.support.OptionParserConfigurer;
+import custom.ColumnMapProcessor;
 import custom.ColumnMapRowMapper;
 import custom.JdbcCursorItemReader;
 import custom.RdfTripleItemWriter;
