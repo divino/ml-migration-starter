@@ -56,6 +56,7 @@ task migrate(type: JavaExec) {
 		"--jdbc_password", jdbc_password,
 		"--sql", sql,
 		"--pk", pk,
+		"--all_tables", all_tables,
 		"--graph_name", graph_name,
 		"--base_iri", base_iri
 	]

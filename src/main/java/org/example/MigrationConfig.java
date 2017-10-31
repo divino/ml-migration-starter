@@ -6,10 +6,7 @@ import com.marklogic.client.DatabaseClientFactory;
 import com.marklogic.client.helper.LoggingObject;
 import com.marklogic.spring.batch.Options;
 import com.marklogic.spring.batch.config.support.OptionParserConfigurer;
-import custom.ColumnMapProcessor;
-import custom.ColumnMapRowMapper;
-import custom.JdbcCursorItemReader;
-import custom.RdfTripleItemWriter;
+import custom.*;
 import joptsimple.OptionParser;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -74,6 +71,7 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 	                 @Value("#{jobParameters['hosts']}") String hosts,
 	                 @Value("#{jobParameters['sql']}") String sql,
 					 @Value("#{jobParameters['pk']}") String pk,
+					 @Value("#{jobParameters['all_tables']}") boolean allTables,
 					 @Value("#{jobParameters['graph_name']}") String graphName,
 					 @Value("#{jobParameters['base_iri']}") String baseIri) {
 
@@ -99,16 +97,21 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 		}
 
 		ItemReader<Map<String, Object>> reader = null;
-		// Uses Spring Batch's JdbcCursorItemReader and Spring JDBC's ColumnMapRowMapper to map each row
-		// to a Map<String, Object>. Normally, if you want more control, standard practice is to bind column values to
-		// a POJO and perform any validation/transformation/etc you need to on that object.
-		JdbcCursorItemReader<Map<String, Object>> r = new JdbcCursorItemReader();
-		r.setRowMapper(new ColumnMapRowMapper(graphName, pk));
-		r.setDataSource(buildDataSource());
-		r.setSql(sql);
-		r.setPrimaryKey(pk);
-		r.setName(graphName);
-		reader = r;
+		if (allTables) {
+			// Use AllTablesReader to process rows from every table
+			reader = new AllTablesItemReader(buildDataSource());
+		} else {
+			// Uses Spring Batch's JdbcCursorItemReader and Spring JDBC's ColumnMapRowMapper to map each row
+			// to a Map<String, Object>. Normally, if you want more control, standard practice is to bind column values to
+			// a POJO and perform any validation/transformation/etc you need to on that object.
+			JdbcCursorItemReader<Map<String, Object>> r = new JdbcCursorItemReader();
+			r.setRowMapper(new ColumnMapRowMapper(graphName, pk));
+			r.setDataSource(buildDataSource());
+			r.setSql(sql);
+			r.setPrimaryKey(pk);
+			r.setName(graphName);
+			reader = r;
+		}
 
 		ColumnMapProcessor processor = new ColumnMapProcessor(baseIri);
 		RdfTripleItemWriter writer = new RdfTripleItemWriter(buildDatabaseClient(hosts), graphName);

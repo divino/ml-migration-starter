@@ -62,4 +62,5 @@ public class JdbcCursorItemReader<T> extends org.springframework.batch.item.data
     public void setPrimaryKey(String primaryKey) {
         this.primaryKey = primaryKey;
     }
+
 }
