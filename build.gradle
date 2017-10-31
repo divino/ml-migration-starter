@@ -50,18 +50,14 @@ task migrate(type: JavaExec) {
 		"--password", password,
 		"--database", database,
 		"--auth", auth,
-		"--thread_count", thread_count,
 		"--jdbc_driver", jdbc_driver,
 		"--jdbc_url", jdbc_url,
 		"--jdbc_username", jdbc_username,
 		"--jdbc_password", jdbc_password,
 		"--sql", sql,
-		"--root_local_name", root_local_name,
-		"--collections", collections,
-		"--permissions", permissions,
-		"--xcc", xcc,
-		"--all_tables", all_tables,
-		"--document_type", document_type
+		"--pk", pk,
+		"--graph_name", graph_name,
+		"--base_iri", base_iri
 	]
 	logger.error("sample " + args)
 }

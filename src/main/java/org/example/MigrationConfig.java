@@ -74,7 +74,8 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 	                 @Value("#{jobParameters['hosts']}") String hosts,
 	                 @Value("#{jobParameters['sql']}") String sql,
 					 @Value("#{jobParameters['pk']}") String pk,
-					 @Value("#{jobParameters['name']}") String name) {
+					 @Value("#{jobParameters['graph_name']}") String graphName,
+					 @Value("#{jobParameters['base_iri']}") String baseIri) {
 
 		// Determine the Spring Batch chunk size
 		int chunkSize = 100;
@@ -87,10 +88,10 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 		logger.info("Hosts: " + hosts);
 		if (StringUtils.hasText(sql) &&
 			StringUtils.hasText(pk) &&
-			StringUtils.hasText(name)) {
+			StringUtils.hasText(graphName)) {
 			logger.info("SQL: " + sql);
 			logger.info("Primary Key: " + pk);
-			logger.info("Name: " + name);
+			logger.info("Graph Name: " + graphName);
 		} else {
 			//logger.info("Migrate all tables: " + allTables);
 			logger.error("All tables not yet supported.");
@@ -102,14 +103,14 @@ public class MigrationConfig extends LoggingObject implements EnvironmentAware, 
 		// to a Map<String, Object>. Normally, if you want more control, standard practice is to bind column values to
 		// a POJO and perform any validation/transformation/etc you need to on that object.
 		JdbcCursorItemReader<Map<String, Object>> r = new JdbcCursorItemReader();
-		r.setRowMapper(new ColumnMapRowMapper(name, pk));
+		r.setRowMapper(new ColumnMapRowMapper(graphName, pk));
 		r.setDataSource(buildDataSource());
 		r.setSql(sql);
 		r.setPrimaryKey(pk);
-		r.setName(name);
+		r.setName(graphName);
 		reader = r;
 
-		ColumnMapProcessor processor = new ColumnMapProcessor();
+		ColumnMapProcessor processor = new ColumnMapProcessor(baseIri);
 		RdfTripleItemWriter writer = new RdfTripleItemWriter(buildDatabaseClient(hosts), "sample");
 
 		// Run the job!

@@ -1,12 +1,9 @@
 package custom;
 
-import com.github.jsonldjava.core.RDFDatasetUtils;
-import com.hp.hpl.jena.datatypes.RDFDatatype;
 import com.hp.hpl.jena.datatypes.xsd.XSDDatatype;
 import com.hp.hpl.jena.graph.Node;
 import com.hp.hpl.jena.graph.NodeFactory;
 import com.hp.hpl.jena.graph.Triple;
-import custom.ColumnMapRowMapper;
 import org.springframework.batch.item.ItemProcessor;
 
 import java.util.ArrayList;
@@ -20,9 +17,10 @@ import java.util.Map;
  */
 public class ColumnMapProcessor implements ItemProcessor<Map<String, Object>, List<Triple>> {
 
-	private String uriPrefix = "http://localhost";
+	private String baseIri;
 
-	public ColumnMapProcessor() {
+	public ColumnMapProcessor(String baseIri) {
+		this.baseIri = baseIri;
 	}
 
 	@Override
@@ -41,8 +39,8 @@ public class ColumnMapProcessor implements ItemProcessor<Map<String, Object>, Li
 				}
 				triples.add(
 					new Triple(
-						NodeFactory.createURI(uriPrefix + "/" + name + "#" + item.get(pk)),
-						NodeFactory.createURI(entry.getKey()),
+						NodeFactory.createURI(baseIri + "/" + name + "#" + item.get(pk)),
+						NodeFactory.createURI(baseIri + "/" + name + "/" + entry.getKey()),
 						object
 					)
 				);
