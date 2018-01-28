@@ -18,12 +18,10 @@ configurations {
 
 dependencies {
 	// Core dependencies needed for using Spring Batch, Spring JDBC, and marklogic-spring-batch
-	compile ("com.marklogic:marklogic-spring-batch-core:0.11.0") {
-		exclude module: "marklogic-client-api"
-	}
-	compile "com.marklogic:marklogic-client-api:4.0.1"
-	compile "com.marklogic:ml-javaclient-util:2.12.0"
-	compile "org.springframework:spring-jdbc:4.3.5.RELEASE"
+	compile "com.marklogic:marklogic-spring-batch-core:1.6.0"
+	compile "com.marklogic:marklogic-client-api:4.0.3.1"
+	compile "com.marklogic:marklogic-jena:3.0.5"
+	compile "org.springframework:spring-jdbc:5.0.0.RELEASE"
 
 	// Using H2 as a sample database; can pull its JDBC driver from a Maven repository
 	runtime "com.h2database:h2:1.4.193"
@@ -39,21 +37,12 @@ dependencies {
 
 task migrate(type: JavaExec) {
 	description = "Run the migration program"
-	classpath = sourceSets.main.runtimeClasspath
-	main = "org.example.MigrationMain"
+	main = 'com.marklogic.spring.batch.core.launch.support.CommandLineJobRunner'
+	classpath = sourceSets.test.runtimeClasspath
 	args = [
-		"--config", "org.example.MigrationConfig",
+		"--job_id", "migrationJob",
+		"--job_path", "org.example.MigrationConfig",
 		"--chunk", chunk,
-		"--hosts", hosts,
-		"--port", port,
-		"--username", username,
-		"--password", password,
-		"--database", database,
-		"--auth", auth,
-		"--jdbc_driver", jdbc_driver,
-		"--jdbc_url", jdbc_url,
-		"--jdbc_username", jdbc_username,
-		"--jdbc_password", jdbc_password,
 		"--sql", sql,
 		"--pk", pk,
 		"--all_tables", all_tables,
@@ -81,6 +70,7 @@ task setupH2(type: JavaExec) {
 		"-url", "jdbc:h2:file:./h2data/sample",
 		"-user", "sa",
 		"-password", "password",
-		"-script", "./h2setup.sql"
+		"-script", "./h2setup.sql",
+		"-chunk", 100
 	]
 }

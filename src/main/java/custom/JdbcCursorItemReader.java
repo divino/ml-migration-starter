@@ -16,18 +16,6 @@
 
 package custom;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
-import org.springframework.batch.item.database.AbstractCursorItemReader;
-import org.springframework.jdbc.core.PreparedStatementSetter;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.JdbcUtils;
-import org.springframework.util.Assert;
-import org.springframework.util.ClassUtils;
-
 /**
  * <p>
  * Simple item reader implementation that opens a JDBC cursor and continually retrieves the

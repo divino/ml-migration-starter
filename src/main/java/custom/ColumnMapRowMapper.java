@@ -13,9 +13,9 @@ public class ColumnMapRowMapper extends org.springframework.jdbc.core.ColumnMapR
     public static String PRIVATE_MAP_KEY_PREFIX  = "private#";
     public static String PK_MAP_KEY  = PRIVATE_MAP_KEY_PREFIX + "pk";
     public static String NAME_MAP_KEY = PRIVATE_MAP_KEY_PREFIX + "name";
-    public static String METADATA_MAP_KEY  = PRIVATE_MAP_KEY_PREFIX + "metadata";
+    public static String METADATA_MAP_KEY  = PRIVATE_MAP_KEY_PREFIX + "METADATA";
 
-    private static Map<String, String> metadata = null;
+    private Map<String, Object> METADATA = new HashMap<>();
 
     private String name;
     private String primaryKey;
@@ -35,19 +35,21 @@ public class ColumnMapRowMapper extends org.springframework.jdbc.core.ColumnMapR
             String key = getColumnKey(JdbcUtils.lookupColumnName(rsmd, i));
             Object obj = getColumnValue(rs, i);
             mapOfColValues.put(key, obj);
-            if (metadata == null) {
+            if (!METADATA.containsKey(this.name)) {
                 if (mapMeta == null) {
                     mapMeta = new HashMap<>();
                 }
                 mapMeta.put(key, rsmd.getColumnTypeName(i));
             }
         }
-        if (metadata == null) {
-            metadata = mapMeta;
+        if (!METADATA.containsKey(this.name)) {
+            METADATA.put(this.name, mapMeta);
+        } else {
+            String test = "";
         }
         mapOfColValues.put(PK_MAP_KEY, this.primaryKey);
         mapOfColValues.put(NAME_MAP_KEY, this.name);
-        mapOfColValues.put(METADATA_MAP_KEY, metadata);
+        mapOfColValues.put(METADATA_MAP_KEY, METADATA.get(this.name));
         return mapOfColValues;
     }
 

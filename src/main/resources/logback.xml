@@ -20,11 +20,11 @@
 		<appender-ref ref="STDOUT" />
 	</logger>
 
-	<logger name="com.marklogic.client" level="WARN" additivity="false">
+	<logger name="com.marklogic.client" level="DEBUG" additivity="false">
 		<appender-ref ref="STDOUT" />
 	</logger>
 
-	<logger name="com.marklogic.client.batch" level="INFO" additivity="false">
+	<logger name="com.marklogic.client.batch" level="DEBUG" additivity="false">
 		<appender-ref ref="STDOUT" />
 	</logger>
 
