@@ -20,8 +20,9 @@ dependencies {
 	// Core dependencies needed for using Spring Batch, Spring JDBC, and marklogic-spring-batch
 	compile "com.marklogic:marklogic-spring-batch-core:1.6.0"
 	compile "com.marklogic:marklogic-client-api:4.0.3.1"
+	compile "org.springframework:spring-jdbc:4.0.0.RELEASE"
+
 	compile "com.marklogic:marklogic-jena:3.0.5"
-	compile "org.springframework:spring-jdbc:5.0.0.RELEASE"
 
 	// Using H2 as a sample database; can pull its JDBC driver from a Maven repository
 	runtime "com.h2database:h2:1.4.193"
@@ -42,11 +43,8 @@ task migrate(type: JavaExec) {
 	args = [
 		"--job_id", "migrationJob",
 		"--job_path", "org.example.MigrationConfig",
-		"--chunk", chunk,
-		"--sql", sql,
-		"--pk", pk,
-		"--all_tables", all_tables,
-		"--graph_name", graph_name,
+		"--all_tables", "false",
+		"--table_name", "BATCH_JOB_EXECUTION_PARAMS",
 		"--base_iri", base_iri
 	]
 	logger.error("sample " + args)
@@ -70,7 +68,6 @@ task setupH2(type: JavaExec) {
 		"-url", "jdbc:h2:file:./h2data/sample",
 		"-user", "sa",
 		"-password", "password",
-		"-script", "./h2setup.sql",
-		"-chunk", 100
+		"-script", "./h2setup.sql"
 	]
 }

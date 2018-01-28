@@ -63,46 +63,25 @@ public class MigrationConfig {
 	@JobScope
 	public Step step(StepBuilderFactory stepBuilderFactory,
 					 DatabaseClientProvider databaseClientProvider,
-	                 @Value("#{jobParameters['sql']}") String sql,
-					 @Value("#{jobParameters['pk']}") String pk,
-					 @Value("#{jobParameters['chunk']}") String chunk,
+	                 @Value("#{jobParameters['table_name']}") String tableName,
 					 @Value("#{jobParameters['all_tables']}") String allTables,
-					 @Value("#{jobParameters['graph_name']}") String graphName,
 					 @Value("#{jobParameters['base_iri']}") String baseIri) {
-
-		if (StringUtils.hasText(sql) &&
-			StringUtils.hasText(pk) &&
-			StringUtils.hasText(graphName)) {
-			logger.info("SQL: " + sql);
-			logger.info("Primary Key: " + pk);
-			logger.info("Graph Name: " + graphName);
-		} else {
-			//logger.info("Migrate all tables: " + allTables);
-			logger.error("All tables not yet supported.");
-			throw new RuntimeException();
-		}
 
 		ItemReader<Map<String, Object>> reader = null;
 		if ("true".equals(allTables)) {
-			// Use AllTablesReader to process rows from every table
-			reader = new AllTablesItemReader(this.dataSource());
+			logger.info("Migrate all tables: " + allTables);
+			reader = new TableItemReaderWithMetadata(this.dataSource());
+		} else if (StringUtils.hasText(tableName)) {
+			logger.info("Table Name: " + tableName);
+			reader = new TableItemReaderWithMetadata(this.dataSource(), "", tableName);
 		} else {
-			// Uses Spring Batch's JdbcCursorItemReader and Spring JDBC's ColumnMapRowMapper to map each row
-			// to a Map<String, Object>. Normally, if you want more control, standard practice is to bind column values to
-			// a POJO and perform any validation/transformation/etc you need to on that object.
-			JdbcCursorItemReader<Map<String, Object>> r = new JdbcCursorItemReader();
-			r.setRowMapper(new ColumnMapRowMapper(graphName, pk));
-			r.setDataSource(this.dataSource());
-			r.setSql(sql);
-			r.setPrimaryKey(pk);
-			r.setName(graphName);
-			reader = r;
+			logger.error("Either table_name is not empty or all_table is true.");
+			throw new RuntimeException();
 		}
 
-		ColumnMapProcessor processor = new ColumnMapProcessor(baseIri);
+		ColumnMapToTripleProcessor processor = new ColumnMapToTripleProcessor(baseIri);
 
-		//TODO: find a way to pass the table name as graphName when processing all_tables = true
-		RdfTripleItemWriter writer = new RdfTripleItemWriter(databaseClientProvider.getDatabaseClient(), graphName);
+		TripleWriter writer = new TripleWriter(databaseClientProvider.getDatabaseClient());
 
 		// Run the job!
 		logger.info("Initialized components, launching job");

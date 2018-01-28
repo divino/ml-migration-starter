@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamException;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.support.AbstractItemStreamItemReader;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ConnectionCallback;
@@ -15,32 +16,44 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
-public class AllTablesItemReader extends AbstractItemStreamItemReader<Map<String, Object>> {
-
-    public final static String DEFAULT_TABLE_NAME_KEY = "_tableName";
+/**
+ * Derived from the AllTablesItemReader but this is metadata aware
+ * because the column datatype are needed to generate the triples
+ */
+public class TableItemReaderWithMetadata extends AbstractItemStreamItemReader<Map<String, Object>> {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     private DataSource dataSource;
-    private List<String> tableNames;
-    private Map<String, JdbcCursorItemReader<Map<String,Object>>> tableReaders;
+    private List<String> tableNames = new ArrayList<>();
+    private String tableName;
+    private Map<String, JdbcCursorItemReader> tableReaders;
     private int tableNameIndex = 0;
-    private String tableNameKey = DEFAULT_TABLE_NAME_KEY;
     private String databaseVendor = "";
-
-    // For ignoring certain table names
-    private Set<String> excludeTableNames;
+    private Map<String, Map<String, Object>> metadata;
 
     // For using a custom SQL query for a given table name
     private Map<String, String> tableQueries;
 
-    public AllTablesItemReader(DataSource dataSource) {
+    public TableItemReaderWithMetadata(DataSource dataSource) {
         this.dataSource = dataSource;
+        MetadataReader metadataReader = new MetadataReader(dataSource, databaseVendor);
+        this.metadata = metadataReader.getMetadata();
     }
 
-    public AllTablesItemReader(DataSource dataSource, String databaseVendor) {
+    public TableItemReaderWithMetadata(DataSource dataSource, String databaseVendor) {
         this.databaseVendor = databaseVendor;
         this.dataSource = dataSource;
+        MetadataReader metadataReader = new MetadataReader(dataSource, databaseVendor);
+        this.metadata = metadataReader.getMetadata();
+    }
+
+    public TableItemReaderWithMetadata(DataSource dataSource, String databaseVendor, String tableName) {
+        this.databaseVendor = databaseVendor;
+        this.dataSource = dataSource;
+        this.tableName = tableName;
+        MetadataReader metadataReader = new MetadataReader(dataSource, databaseVendor, tableName);
+        this.metadata = metadataReader.getMetadata();
     }
 
     /**
@@ -64,9 +77,8 @@ public class AllTablesItemReader extends AbstractItemStreamItemReader<Map<String
     @Override
     public Map<String, Object> read() throws Exception {
         final String currentTableName = tableNames.get(tableNameIndex);
-
-        JdbcCursorItemReader<Map<String,Object>> reader = tableReaders.get(currentTableName);
-
+        JdbcCursorItemReader<Map<String, Object>> reader = tableReaders.get(currentTableName);
+        reader.setVerifyCursorPosition(false);
         Map<String, Object> result = reader.read();
         if (result != null) {
             result.put("_tableName", currentTableName);
@@ -106,20 +118,24 @@ public class AllTablesItemReader extends AbstractItemStreamItemReader<Map<String
      * property can be used to ignore certain table names.
      */
     protected List<String> getTableNames() {
-        return new JdbcTemplate(dataSource).execute(new ConnectionCallback<List<String>>() {
-            @Override
-            public List<String> doInConnection(Connection con) throws SQLException, DataAccessException {
-                ResultSet rs = con.getMetaData().getTables(null, null, "%", new String[]{"TABLE"});
-                List<String> list = new ArrayList<>();
-                while (rs.next()) {
-                    String name = rs.getString("TABLE_NAME");
-                    if (excludeTableNames == null || !excludeTableNames.contains(name)) {
+        List<String> retVal = new ArrayList<>();
+        if (null == this.tableName || "".equals(this.tableName)) {
+            retVal = new JdbcTemplate(dataSource).execute(new ConnectionCallback<List<String>>() {
+                @Override
+                public List<String> doInConnection(Connection con) throws SQLException, DataAccessException {
+                    ResultSet rs = con.getMetaData().getTables(null, null, "%", new String[]{"TABLE"});
+                    List<String> list = new ArrayList<>();
+                    while (rs.next()) {
+                        String name = rs.getString("TABLE_NAME");
                         list.add(name);
                     }
+                    return list;
                 }
-                return list;
-            }
-        });
+            });
+        } else {
+            retVal.add(this.tableName);
+        }
+        return retVal;
     }
 
     /**
@@ -129,32 +145,15 @@ public class AllTablesItemReader extends AbstractItemStreamItemReader<Map<String
      * used for a particular table.
      */
     protected JdbcCursorItemReader<Map<String, Object>> buildTableReader(String tableName, ExecutionContext executionContext) {
-        String primaryKey = getPrimaryKey(tableName);
+        Map<String, Object> tableMetadata = this.metadata.get(tableName);
+        executionContext.put(MetadataReader.TABLE_NAME_MAP_KEY, tableName);
+
         JdbcCursorItemReader<Map<String, Object>> reader = new JdbcCursorItemReader<>();
         reader.setDataSource(dataSource);
-        reader.setRowMapper(new ColumnMapRowMapper(tableName, primaryKey));
+        reader.setRowMapper(new ColumnMapRowMapperWithMetadata(tableMetadata));
         reader.setSql(getSqlQueryForTable(tableName));
-        reader.setPrimaryKey(primaryKey);
-        reader.setName(tableName);
         reader.open(executionContext);
         return reader;
-    }
-
-    /**
-     * @return primary key of the table.
-     */
-    protected String getPrimaryKey(String table) {
-        return new JdbcTemplate(dataSource).execute(new ConnectionCallback<String>() {
-            @Override
-            public String doInConnection(Connection con) throws SQLException, DataAccessException {
-                ResultSet rs = con.getMetaData().getPrimaryKeys(null, null, table);
-                String pk = "";
-                if (rs.next()) {
-                    pk = rs.getString("COLUMN_NAME");
-                }
-                return pk;
-            }
-        });
     }
 
     /**
@@ -172,21 +171,5 @@ public class AllTablesItemReader extends AbstractItemStreamItemReader<Map<String
             tableName = "[" + tableName + "]";
         }
         return sql != null ? sql : "SELECT * FROM " + tableName;
-    }
-
-    public void setExcludeTableNames(Set<String> excludeTableNames) {
-        this.excludeTableNames = excludeTableNames;
-    }
-
-    public void setTableQueries(Map<String, String> tableQueries) {
-        this.tableQueries = tableQueries;
-    }
-
-    public void setTableNameKey(String tableNameKey) {
-        this.tableNameKey = tableNameKey;
-    }
-
-    public void setDatabaseVendor(String databaseVendor) {
-        this.databaseVendor = databaseVendor;
     }
 }

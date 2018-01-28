@@ -1,8 +1,10 @@
 package custom;
 
 import java.util.List;
+import java.util.Map;
 
 
+import org.apache.jena.base.Sys;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -28,7 +30,7 @@ import com.marklogic.semantics.jena.MarkLogicDatasetGraphFactory;
  * @author viyengar
  *
  */
-public class RdfTripleItemWriter implements ItemWriter<List<Triple>> {
+public class TripleWriter implements ItemWriter<List<Triple>> {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -38,11 +40,11 @@ public class RdfTripleItemWriter implements ItemWriter<List<Triple>> {
     private MarkLogicDatasetGraph dsg;
     private DatabaseClient client;
 
-    public RdfTripleItemWriter(DatabaseClient client, String graphName) {
+    public TripleWriter(DatabaseClient client) {
         this.client = client;
         this.dsg = getMarkLogicDatasetGraph(client);
         this.graphName = graphName;
-        graphNode = NodeFactory.createURI(graphName);
+        graphNode = NodeFactory.createURI("DEFAULT");
         // Clear the triples- temporary
         dsg.clear();
     }
@@ -57,7 +59,7 @@ public class RdfTripleItemWriter implements ItemWriter<List<Triple>> {
         Graph graph = GraphFactory.createDefaultGraph();
         logger.info("writing triple records");
         for (List<Triple> tripleList : items) {
-            for (Triple triple: tripleList) {
+            for (Triple triple : tripleList) {
                 writeRecords(triple, graph);
             }
         }
@@ -92,7 +94,8 @@ public class RdfTripleItemWriter implements ItemWriter<List<Triple>> {
      */
     public void open(ExecutionContext executionContext) {
         if (graphNode == null) {
-            graphNode = NodeFactory.createURI(graphName);
+            System.out.println("Create new nodee ");
+            graphNode = NodeFactory.createURI("XXX");
         }
 
         if (this.dsg == null) {
