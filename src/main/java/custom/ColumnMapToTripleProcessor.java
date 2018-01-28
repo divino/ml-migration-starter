@@ -29,15 +29,10 @@ public class ColumnMapToTripleProcessor implements ItemProcessor<Map<String, Obj
 		Map<String, Object> metadata = (Map<String, Object>) item.get(MetadataReader.META_MAP_KEY);
 		String tableName = (String) metadata.get(MetadataReader.TABLE_NAME_MAP_KEY);
 		String pk = (String) metadata.get(MetadataReader.PK_MAP_KEY);
-
-		System.out.println(" ITEM >>>  " + item.toString());
-
 		Map<String, Object> retval = new HashMap<>();
 		List<Triple> triples = new ArrayList<>();
+
 		for (Map.Entry<String, Object> entry : item.entrySet()) {
-
-		    // System.out.println("entry " + entry.toString());
-
 			if (null != entry.getValue() &&
 					null != entry.getKey() &&
 					!entry.getKey().equals(MetadataReader.META_MAP_KEY)) {
@@ -53,16 +48,12 @@ public class ColumnMapToTripleProcessor implements ItemProcessor<Map<String, Obj
 					object = NodeFactory.createLiteral(entry.getValue().toString());
 				}
 
-                Triple triple = new Triple(
-                        NodeFactory.createURI(baseIri + "/" + tableName + "#" + item.get(pk)),
-                        NodeFactory.createURI(baseIri + "/" + tableName + "/" + entry.getKey()),
-                        object
-                );
-
-				System.out.println(" triple ==> " + triple.toString());
-
 				triples.add(
-					triple
+					new Triple(
+						NodeFactory.createURI(baseIri + "/" + tableName + "#" + item.get(pk)),
+						NodeFactory.createURI(baseIri + "/" + tableName + "/" + entry.getKey()),
+						object
+					)
 				);
 			}
 		}

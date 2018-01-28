@@ -62,13 +62,17 @@ public class MetadataReader {
             Map<Integer, String> index = new HashMap<>();
             for (int i = 1; i <= columnCount; i++) {
                 String key = JdbcUtils.lookupColumnName(mtrs, i);
-                System.out.println(" col " + key);
                 metadata.put(key, mtrs.getColumnTypeName(i));
                 index.put(i, key);
             }
             metadata.put(ORDER_MAP_KEY, index);
             metadata.put(TABLE_NAME_MAP_KEY, tableName);
-            metadata.put(PK_MAP_KEY, getPrimaryKey(tableName));
+            String pk = getPrimaryKey(tableName);
+            if (null == pk || "".equals(pk)) {
+                metadata.put(PK_MAP_KEY, index.get(1));
+            } else {
+                metadata.put(PK_MAP_KEY, getPrimaryKey(tableName));
+            }
         } catch (SQLException e) {
             logger.error("", e);
         }
@@ -79,7 +83,6 @@ public class MetadataReader {
         if (null == this.tableName || "".equals(this.tableName)) {
             List<String> tables = getTableNames();
             for (String tableName : tables) {
-                System.out.println(" Table " + tableName);
                 save(tableName);
             }
         } else {

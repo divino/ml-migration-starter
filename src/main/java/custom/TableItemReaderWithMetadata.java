@@ -146,8 +146,6 @@ public class TableItemReaderWithMetadata extends AbstractItemStreamItemReader<Ma
      */
     protected JdbcCursorItemReader<Map<String, Object>> buildTableReader(String tableName, ExecutionContext executionContext) {
         Map<String, Object> tableMetadata = this.metadata.get(tableName);
-        executionContext.put(MetadataReader.TABLE_NAME_MAP_KEY, tableName);
-
         JdbcCursorItemReader<Map<String, Object>> reader = new JdbcCursorItemReader<>();
         reader.setDataSource(dataSource);
         reader.setRowMapper(new ColumnMapRowMapperWithMetadata(tableMetadata));

@@ -13,6 +13,7 @@ import org.apache.jena.sparql.graph.GraphFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.ExecutionContext;
+import org.springframework.batch.item.ItemStream;
 import org.springframework.batch.item.ItemStreamException;
 import org.springframework.batch.item.ItemWriter;
 
@@ -40,11 +41,11 @@ public class TripleWriter implements ItemWriter<List<Triple>> {
     private MarkLogicDatasetGraph dsg;
     private DatabaseClient client;
 
-    public TripleWriter(DatabaseClient client) {
+    public TripleWriter(DatabaseClient client, String graphName) {
         this.client = client;
         this.dsg = getMarkLogicDatasetGraph(client);
         this.graphName = graphName;
-        graphNode = NodeFactory.createURI("DEFAULT");
+        graphNode = NodeFactory.createURI(graphName);
         // Clear the triples- temporary
         dsg.clear();
     }
@@ -94,8 +95,7 @@ public class TripleWriter implements ItemWriter<List<Triple>> {
      */
     public void open(ExecutionContext executionContext) {
         if (graphNode == null) {
-            System.out.println("Create new nodee ");
-            graphNode = NodeFactory.createURI("XXX");
+            graphNode = NodeFactory.createURI(executionContext.getString(MetadataReader.TABLE_NAME_MAP_KEY));
         }
 
         if (this.dsg == null) {

@@ -43,8 +43,9 @@ task migrate(type: JavaExec) {
 	args = [
 		"--job_id", "migrationJob",
 		"--job_path", "org.example.MigrationConfig",
-		"--all_tables", "false",
-		"--table_name", "BATCH_JOB_EXECUTION_PARAMS",
+		"--all_tables", "true",
+		"--graph_name", "sample",
+		"--table_name", "Customer",
 		"--base_iri", base_iri
 	]
 	logger.error("sample " + args)

@@ -63,6 +63,7 @@ public class MigrationConfig {
 	@JobScope
 	public Step step(StepBuilderFactory stepBuilderFactory,
 					 DatabaseClientProvider databaseClientProvider,
+					 @Value("#{jobParameters['graph_name']}") String graphName,
 	                 @Value("#{jobParameters['table_name']}") String tableName,
 					 @Value("#{jobParameters['all_tables']}") String allTables,
 					 @Value("#{jobParameters['base_iri']}") String baseIri) {
@@ -81,7 +82,7 @@ public class MigrationConfig {
 
 		ColumnMapToTripleProcessor processor = new ColumnMapToTripleProcessor(baseIri);
 
-		TripleWriter writer = new TripleWriter(databaseClientProvider.getDatabaseClient());
+		TripleWriter writer = new TripleWriter(databaseClientProvider.getDatabaseClient(), graphName);
 
 		// Run the job!
 		logger.info("Initialized components, launching job");
