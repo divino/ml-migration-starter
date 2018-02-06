@@ -1,10 +1,10 @@
 package custom;
 
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Stream;
 
 
-import org.apache.jena.base.Sys;
+import custom.util.MetadataReaderUtil;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -31,7 +31,7 @@ import com.marklogic.semantics.jena.MarkLogicDatasetGraphFactory;
  * @author viyengar
  *
  */
-public class TripleWriter implements ItemWriter<List<Triple>> {
+public class TripleWriter implements ItemWriter<List<Triple>>, ItemStream {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -94,13 +94,21 @@ public class TripleWriter implements ItemWriter<List<Triple>> {
      * context is opened
      */
     public void open(ExecutionContext executionContext) {
+        System.out.println("OPEN xxx >>> " + executionContext.getString("xxx"));
+
         if (graphNode == null) {
-            graphNode = NodeFactory.createURI(executionContext.getString(MetadataReader.TABLE_NAME_MAP_KEY));
+            graphNode = NodeFactory.createURI(executionContext.getString(MetadataReaderUtil.TABLE_NAME_MAP_KEY));
         }
 
         if (this.dsg == null) {
             this.dsg = getMarkLogicDatasetGraph(client);
         }
+    }
+
+    @Override
+    public void update(ExecutionContext executionContext) throws ItemStreamException {
+        System.out.println("UPDATE xxx >>> " + executionContext.getString("xxx"));
+
     }
 
     /**

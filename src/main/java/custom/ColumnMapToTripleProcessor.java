@@ -1,5 +1,6 @@
 package custom;
 
+import custom.util.MetadataReaderUtil;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -7,7 +8,6 @@ import org.apache.jena.graph.Triple;
 import org.springframework.batch.item.ItemProcessor;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,18 +26,17 @@ public class ColumnMapToTripleProcessor implements ItemProcessor<Map<String, Obj
 
 	@Override
 	public List<Triple> process(Map<String, Object> item) throws Exception {
-		Map<String, Object> metadata = (Map<String, Object>) item.get(MetadataReader.META_MAP_KEY);
-		String tableName = (String) metadata.get(MetadataReader.TABLE_NAME_MAP_KEY);
-		String pk = (String) metadata.get(MetadataReader.PK_MAP_KEY);
-		Map<String, Object> retval = new HashMap<>();
+		Map<String, Object> metadata = (Map<String, Object>) item.get(MetadataReaderUtil.META_MAP_KEY);
+		String tableName = (String) metadata.get(MetadataReaderUtil.TABLE_NAME_MAP_KEY);
+		String pk = (String) metadata.get(MetadataReaderUtil.PK_MAP_KEY);
 		List<Triple> triples = new ArrayList<>();
 
 		for (Map.Entry<String, Object> entry : item.entrySet()) {
 			if (null != entry.getValue() &&
 					null != entry.getKey() &&
-					!entry.getKey().equals(MetadataReader.META_MAP_KEY)) {
+					!entry.getKey().equals(MetadataReaderUtil.META_MAP_KEY)) {
 
-				Node object = null;
+				Node object;
 				if ("INTEGER".equals(metadata.get(entry.getKey()))) {
 					object = NodeFactory.createLiteral(entry.getValue().toString(), XSDDatatype.XSDinteger);
 				} else if ("DATE".equals(metadata.get(entry.getKey()))) {

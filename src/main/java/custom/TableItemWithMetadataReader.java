@@ -1,5 +1,6 @@
 package custom;
 
+import custom.util.MetadataReaderUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.ExecutionContext;
@@ -20,7 +21,7 @@ import java.util.*;
  * Derived from the AllTablesItemReader but this is metadata aware
  * because the column datatype are needed to generate the triples
  */
-public class TableItemReaderWithMetadata extends AbstractItemStreamItemReader<Map<String, Object>> {
+public class TableItemWithMetadataReader extends AbstractItemStreamItemReader<Map<String, Object>> {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -35,25 +36,21 @@ public class TableItemReaderWithMetadata extends AbstractItemStreamItemReader<Ma
     // For using a custom SQL query for a given table name
     private Map<String, String> tableQueries;
 
-    public TableItemReaderWithMetadata(DataSource dataSource) {
-        this.dataSource = dataSource;
-        MetadataReader metadataReader = new MetadataReader(dataSource, databaseVendor);
-        this.metadata = metadataReader.getMetadata();
-    }
-
-    public TableItemReaderWithMetadata(DataSource dataSource, String databaseVendor) {
+    public TableItemWithMetadataReader(DataSource dataSource, String databaseVendor) {
         this.databaseVendor = databaseVendor;
         this.dataSource = dataSource;
-        MetadataReader metadataReader = new MetadataReader(dataSource, databaseVendor);
-        this.metadata = metadataReader.getMetadata();
+
+        MetadataReaderUtil metadataReaderUtil = new MetadataReaderUtil(dataSource, databaseVendor);
+        this.metadata = metadataReaderUtil.getMetadata();
     }
 
-    public TableItemReaderWithMetadata(DataSource dataSource, String databaseVendor, String tableName) {
+    public TableItemWithMetadataReader(DataSource dataSource, String databaseVendor, String tableName) {
         this.databaseVendor = databaseVendor;
         this.dataSource = dataSource;
         this.tableName = tableName;
-        MetadataReader metadataReader = new MetadataReader(dataSource, databaseVendor, tableName);
-        this.metadata = metadataReader.getMetadata();
+
+        MetadataReaderUtil metadataReaderUtil = new MetadataReaderUtil(dataSource, databaseVendor, tableName);
+        this.metadata = metadataReaderUtil.getMetadata();
     }
 
     /**
@@ -148,8 +145,9 @@ public class TableItemReaderWithMetadata extends AbstractItemStreamItemReader<Ma
         Map<String, Object> tableMetadata = this.metadata.get(tableName);
         JdbcCursorItemReader<Map<String, Object>> reader = new JdbcCursorItemReader<>();
         reader.setDataSource(dataSource);
-        reader.setRowMapper(new ColumnMapRowMapperWithMetadata(tableMetadata));
+        reader.setRowMapper(new RowToColumnMapWithMetadataMapper(tableMetadata));
         reader.setSql(getSqlQueryForTable(tableName));
+        executionContext.putString("xxx", tableName);
         reader.open(executionContext);
         return reader;
     }

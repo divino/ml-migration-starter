@@ -1,4 +1,4 @@
-package custom;
+package custom.util;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +9,7 @@ import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 
-public class MetadataReader {
+public class MetadataReaderUtil {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -21,16 +21,16 @@ public class MetadataReader {
     private Map<String, Map<String, Object>> METADATA = new HashMap<>();
     private String tableName;
     private DataSource dataSource;
-    private String databaseVendor = "";
+    private String databaseVendor;
 
     /* assumes all tables */
-    public MetadataReader(DataSource dataSource, String databaseVendor) {
+    public MetadataReaderUtil(DataSource dataSource, String databaseVendor) {
         this.databaseVendor = databaseVendor;
         this.dataSource = dataSource;
         this.load();
     }
 
-    public MetadataReader(DataSource dataSource, String databaseVendor, String tableName) {
+    public MetadataReaderUtil(DataSource dataSource, String databaseVendor, String tableName) {
         this.databaseVendor = databaseVendor;
         this.dataSource = dataSource;
         this.tableName = tableName;

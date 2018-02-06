@@ -50,6 +50,7 @@ public class MigrationConfig {
 	 */
 	@Bean(name = JOB_NAME)
 	public Job job(JobBuilderFactory jobBuilderFactory, Step step) {
+
 		return jobBuilderFactory.get("migrationJob").start(step).build();
 	}
 
@@ -68,13 +69,13 @@ public class MigrationConfig {
 					 @Value("#{jobParameters['all_tables']}") String allTables,
 					 @Value("#{jobParameters['base_iri']}") String baseIri) {
 
-		ItemReader<Map<String, Object>> reader = null;
+		ItemReader<Map<String, Object>> reader;
 		if ("true".equals(allTables)) {
 			logger.info("Migrate all tables: " + allTables);
-			reader = new TableItemReaderWithMetadata(this.dataSource());
+			reader = new TableItemWithMetadataReader(this.dataSource(), "");
 		} else if (StringUtils.hasText(tableName)) {
 			logger.info("Table Name: " + tableName);
-			reader = new TableItemReaderWithMetadata(this.dataSource(), "", tableName);
+			reader = new TableItemWithMetadataReader(this.dataSource(), "", tableName);
 		} else {
 			logger.error("Either table_name is not empty or all_table is true.");
 			throw new RuntimeException();

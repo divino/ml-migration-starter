@@ -1,19 +1,20 @@
 package custom;
 
+import custom.util.MetadataReaderUtil;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ColumnMapRowMapperWithMetadata extends org.springframework.jdbc.core.ColumnMapRowMapper {
+public class RowToColumnMapWithMetadataMapper extends org.springframework.jdbc.core.ColumnMapRowMapper {
 
     private Map<Integer, String> order;
-    private Map<String, Object> metadata = new HashMap<>();
+    private Map<String, Object> metadata;
     private Integer colCount;
 
-    public ColumnMapRowMapperWithMetadata(Map<String, Object> metadata) {
-        //System.out.println(" ColumnMapRowMapperWithMetadata " + metadata.toString());
-        this.order = (Map<Integer, String>) metadata.get(MetadataReader.ORDER_MAP_KEY);
+    public RowToColumnMapWithMetadataMapper(Map<String, Object> metadata) {
+        this.order = (Map<Integer, String>) metadata.get(MetadataReaderUtil.ORDER_MAP_KEY);
         this.colCount = order.keySet().size();
         this.metadata = metadata;
     }
@@ -25,12 +26,11 @@ public class ColumnMapRowMapperWithMetadata extends org.springframework.jdbc.cor
             for (int i = 1; i <= colCount ; i++) {
                 mapOfColValues.put(order.get(i), getColumnValue(rs, i));
             }
-            mapOfColValues.put(MetadataReader.META_MAP_KEY, metadata);
+            mapOfColValues.put(MetadataReaderUtil.META_MAP_KEY, metadata);
         }
         if (mapOfColValues.size() == 0) {
             return null;
         }
-        //System.out.println(" mapRow " + metadata.toString());
         return mapOfColValues;
     }
 
