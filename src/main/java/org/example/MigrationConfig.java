@@ -2,7 +2,6 @@ package org.example;
 
 import com.marklogic.client.ext.helper.DatabaseClientProvider;
 import custom.*;
-import org.apache.jena.graph.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.Job;
@@ -12,6 +11,7 @@ import org.springframework.batch.core.configuration.annotation.JobBuilderFactory
 import org.springframework.batch.core.configuration.annotation.JobScope;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.support.PassThroughItemProcessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -22,7 +22,6 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.util.StringUtils;
 
 import javax.sql.DataSource;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -81,16 +80,14 @@ public class MigrationConfig {
 			throw new RuntimeException();
 		}
 
-		ColumnMapToTripleProcessor processor = new ColumnMapToTripleProcessor(baseIri);
-
-		TripleWriter writer = new TripleWriter(databaseClientProvider.getDatabaseClient(), graphName);
+		TripleWriter writer = new TripleWriter(databaseClientProvider.getDatabaseClient(), graphName, graphName);
 
 		// Run the job!
 		logger.info("Initialized components, launching job");
 		return stepBuilderFactory.get("step1")
-			.<Map<String, Object>, List<Triple>>chunk(1000)
+			.<Map<String, Object>, Map<String, Object>>chunk(10000)
 			.reader(reader)
-			.processor(processor)
+			.processor(new PassThroughItemProcessor<>())
 			.writer(writer)
 			.build();
 	}

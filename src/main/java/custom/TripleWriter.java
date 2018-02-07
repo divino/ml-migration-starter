@@ -1,10 +1,12 @@
 package custom;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Stream;
-
+import java.util.Map;
 
 import custom.util.MetadataReaderUtil;
+import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -12,9 +14,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.sparql.graph.GraphFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.batch.item.ExecutionContext;
-import org.springframework.batch.item.ItemStream;
-import org.springframework.batch.item.ItemStreamException;
 import org.springframework.batch.item.ItemWriter;
 
 import com.marklogic.client.DatabaseClient;
@@ -31,23 +30,23 @@ import com.marklogic.semantics.jena.MarkLogicDatasetGraphFactory;
  * @author viyengar
  *
  */
-public class TripleWriter implements ItemWriter<List<Triple>>, ItemStream {
+public class TripleWriter implements ItemWriter<Map<String,Object>> {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     // Configurable
-    private String graphName;
-    private Node graphNode;
+    private String graphPrefix;
+    private Map<String,Graph> graphNodes = new HashMap<>();
     private MarkLogicDatasetGraph dsg;
     private DatabaseClient client;
+    private String baseIri;
 
-    public TripleWriter(DatabaseClient client, String graphName) {
+    public TripleWriter(DatabaseClient client, String graphPrefix, String baseIri) {
         this.client = client;
         this.dsg = getMarkLogicDatasetGraph(client);
-        this.graphName = graphName;
-        graphNode = NodeFactory.createURI(graphName);
-        // Clear the triples- temporary
-        dsg.clear();
+        this.graphPrefix = graphPrefix;
+        this.baseIri = baseIri;
+        clearTripleData();
     }
 
     /**
@@ -56,15 +55,65 @@ public class TripleWriter implements ItemWriter<List<Triple>>, ItemStream {
      *
      */
     @Override
-    public void write(List<? extends List<Triple>> items) throws Exception {
+    public void write(List<? extends Map<String, Object>> mapList) throws Exception {
         Graph graph = GraphFactory.createDefaultGraph();
-        logger.info("writing triple records");
-        for (List<Triple> tripleList : items) {
-            for (Triple triple : tripleList) {
-                writeRecords(triple, graph);
+        for (Map<String,Object> map : mapList) {
+            String currentTable = (String) map.get("_tableName");
+            if (!this.graphNodes.containsKey(currentTable)) {
+                Node node = NodeFactory.createURI(this.graphPrefix + currentTable);
+                dsg.addGraph(node, graph);
+                dsg.getGraph(node).clear();
+                this.graphNodes.put(currentTable, dsg.getGraph(node));
+                writeRecords(
+                        new Triple(
+                            NodeFactory.createURI(baseIri + "#" + currentTable),
+                            NodeFactory.createURI(baseIri + "#typeOf"),
+                            NodeFactory.createURI(baseIri + "#table")),
+                        graph,
+                        currentTable
+                );
+            }
+            process (map, graph, currentTable);
+        }
+    }
+
+    public List<Triple> process(Map<String, Object> item, Graph graph, String currentTable) throws Exception {
+        Map<String, Object> metadata = (Map<String, Object>) item.get(MetadataReaderUtil.META_MAP_KEY);
+        String pk = (String) metadata.get(MetadataReaderUtil.PK_MAP_KEY);
+        List<Triple> triples = new ArrayList<>();
+
+        for (Map.Entry<String, Object> entry : item.entrySet()) {
+            if (null != entry.getValue() &&
+                    null != entry.getKey() &&
+                    !(
+                        entry.getKey().equals(MetadataReaderUtil.META_MAP_KEY) ||
+                        entry.getKey().equals("_tableName")
+                    )) {
+
+                Node object;
+                if ("INTEGER".equals(metadata.get(entry.getKey()))) {
+                    object = NodeFactory.createLiteral(entry.getValue().toString(), XSDDatatype.XSDinteger);
+                } else if ("DATE".equals(metadata.get(entry.getKey()))) {
+                    object = NodeFactory.createLiteral(entry.getValue().toString(), XSDDatatype.XSDdate);
+                } else if ("DECIMAL".equals(metadata.get(entry.getKey()))) {
+                    object = NodeFactory.createLiteral(entry.getValue().toString(), XSDDatatype.XSDdecimal);
+                } else {
+                    object = NodeFactory.createLiteral(entry.getValue().toString());
+                }
+
+                writeRecords(
+                        new Triple(
+                            NodeFactory.createURI(baseIri + "/" + currentTable + "#" + item.get(pk)),
+                            NodeFactory.createURI(baseIri + "/" + currentTable + "#has" + entry.getKey()),
+                            object
+                        ),
+                        graph,
+                        currentTable
+                );
             }
         }
-        logger.info("Triple inserted count [" + this.getTripleCount() + "]");
+
+        return triples;
     }
 
     /**
@@ -73,68 +122,10 @@ public class TripleWriter implements ItemWriter<List<Triple>>, ItemStream {
      * @param rdfTriple
      * @param graph
      */
-    private void writeRecords(Triple rdfTriple, Graph graph) {
-        // Add triple to the graph
-        graph.add(rdfTriple);
-        if (dsg.containsGraph(graphNode))
-        {
-            logger.debug("Yes, we have this graphNode in MarkLogic");
-            logger.debug("Triple [" + rdfTriple.toString() + "]");
-            dsg.mergeGraph(graphNode, graph);
-        }
-        else
-        {
-            logger.debug("Store the graph in MarkLogic.");
-            dsg.addGraph(graphNode, graph);
-        }
+    private void writeRecords(Triple rdfTriple, Graph graph, String tableName) {
+        graphNodes.get(tableName).add(rdfTriple);
     }
 
-    /**
-     * Make sure the graph node and MarkLogic data set graphs are initialized when the
-     * context is opened
-     */
-    public void open(ExecutionContext executionContext) {
-        System.out.println("OPEN xxx >>> " + executionContext.getString("xxx"));
-
-        if (graphNode == null) {
-            graphNode = NodeFactory.createURI(executionContext.getString(MetadataReaderUtil.TABLE_NAME_MAP_KEY));
-        }
-
-        if (this.dsg == null) {
-            this.dsg = getMarkLogicDatasetGraph(client);
-        }
-    }
-
-    @Override
-    public void update(ExecutionContext executionContext) throws ItemStreamException {
-        System.out.println("UPDATE xxx >>> " + executionContext.getString("xxx"));
-
-    }
-
-    /**
-     * This close method from ItemStream gives us a way to write all the remaining records in our map after all the rows
-     * have been read from the Triple data file.
-     */
-    public void close() throws ItemStreamException {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Closing Writer, and writing remaining records");
-        }
-        //writeRecords(null, null);
-    }
-
-    /**
-     * Returns the triple count for the graph that was inserted into MarkLogic
-     * @return
-     */
-    public int getTripleCount()
-    {
-        int tripleCount = 0;
-        if (dsg.containsGraph(graphNode))
-        {
-            tripleCount = dsg.getGraph(graphNode).size();
-        }
-        return tripleCount;
-    }
 
     /**
      * Retrieve the MarkLogic data set graph using the graph factory for the client

@@ -147,7 +147,6 @@ public class TableItemWithMetadataReader extends AbstractItemStreamItemReader<Ma
         reader.setDataSource(dataSource);
         reader.setRowMapper(new RowToColumnMapWithMetadataMapper(tableMetadata));
         reader.setSql(getSqlQueryForTable(tableName));
-        executionContext.putString("xxx", tableName);
         reader.open(executionContext);
         return reader;
     }
