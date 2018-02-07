@@ -1,7 +1,8 @@
 package org.example;
 
 import com.marklogic.client.ext.helper.DatabaseClientProvider;
-import custom.*;
+import com.marklogic.spring.batch.item.reader.TableItemWithMetadataReader;
+import com.marklogic.spring.batch.item.writer.TripleWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.Job;
