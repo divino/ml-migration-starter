@@ -1,7 +1,8 @@
 package org.example;
 
 import com.marklogic.client.ext.helper.DatabaseClientProvider;
-import com.marklogic.spring.batch.item.reader.TableItemWithMetadataReader;
+import com.marklogic.client.ext.helper.LoggingObject;
+import com.marklogic.spring.batch.item.rdbms.TableItemWithMetadataReader;
 import com.marklogic.spring.batch.item.writer.TripleWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,9 +33,7 @@ import java.util.Map;
 @EnableBatchProcessing
 @Import(value = {com.marklogic.spring.batch.config.MarkLogicBatchConfiguration.class})
 @PropertySource("file:./job.properties")
-public class MigrationConfig {
-
-	protected final Logger logger = LoggerFactory.getLogger(getClass());
+public class MigrationConfig extends LoggingObject {
 
 	@Autowired
 	private Environment env;
@@ -81,7 +80,7 @@ public class MigrationConfig {
 			throw new RuntimeException();
 		}
 
-		TripleWriter writer = new TripleWriter(databaseClientProvider.getDatabaseClient(), graphName, graphName);
+		TripleWriter writer = new TripleWriter(databaseClientProvider.getDatabaseClient(), graphName, baseIri);
 
 		// Run the job!
 		logger.info("Initialized components, launching job");
