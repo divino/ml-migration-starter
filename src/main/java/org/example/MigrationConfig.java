@@ -3,7 +3,7 @@ package org.example;
 import com.marklogic.client.ext.helper.DatabaseClientProvider;
 import com.marklogic.client.ext.helper.LoggingObject;
 import com.marklogic.spring.batch.item.rdbms.TableItemWithMetadataReader;
-import com.marklogic.spring.batch.item.writer.TripleWriter;
+import com.marklogic.spring.batch.item.rdf.TripleWriter;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
